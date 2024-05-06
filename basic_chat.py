@@ -80,3 +80,76 @@ print(image_url)
 Image(url=image_url)
 
 # Can create and manipulate images
+
+
+# Generate data and fine tune the model
+import pandas as pd
+import random
+
+# lists to hold the random prompt values
+locations = ['the moon', 'a space ship', 'in outer space']
+alien_types = ["Grey","Reptilian","Nordic","Shape shifting"]
+hero_goals = ["save the Earth", "destroy the alien home planet", "save the human race"]
+
+# prompt template to be completed using values from the lists above
+prompt = ''' Imagine the plot for a new science fiction movie. The location is {location}. Humans
+               are fighting the {alien_type} aliens. The hero of the movie intends to {hero_goal}. 
+               Write the movie plot in 50 words or less. '''
+
+sub_prompt = "{location}, {alien_type}, {hero_goal}"
+
+df = pd.DataFrame()
+
+# To fine-tune a model, you are required to provide at least 10 examples. 
+# You'll see improvements from fine-tuning on 50 to 100 training examples 
+for i in range(100): 
+    
+    # retrieve random numbers based on the length of the lists
+    location = random.randint(0,len(locations)-1)
+    alien_type = random.randint(0,len(alien_types)-1)
+    hero_goal = random.randint(0,len(hero_goals)-1)
+    
+    # use the prompt template and fill in the values
+    model_prompt = prompt.format(location=locations[location], alien_type=alien_types[alien_type], 
+                           hero_goal=hero_goals[hero_goal])
+    
+    # track the values used to fill in the template
+    model_sub_prompt = sub_prompt.format(location=locations[location], alien_type=alien_types[alien_type], 
+                           hero_goal=hero_goals[hero_goal])
+
+    # retrieve a model generated movie plot based on the input prompt
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+           {"role": "system", "content": '''You help write movie scripts.'''},
+           {"role": "user", "content": model_prompt}
+        ],
+        temperature=1,
+        max_tokens=500,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    
+    # retrieve the finish reason for the model
+    finish_reason = response.choices[0].finish_reason
+    
+    # retrieve the response 
+    response_txt = response.choices[0].message.content
+    
+    # add response, prompt, etc. to a DataFrame
+    new_row = {
+        'location'
+        'alien_type'
+        'hero_goal'
+        'prompt':model_prompt, 
+        'sub_prompt':model_sub_prompt, 
+        'response_txt':response_txt, 
+        'finish_reason':finish_reason}
+    
+    new_row = pd.DataFrame([new_row])
+    
+    df = pd.concat([df, new_row], axis=0, ignore_index=True)
+
+#save DataFrame to a CSV 
+df.to_csv("science_fiction_plots.csv")
